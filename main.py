@@ -12,7 +12,8 @@ import json
 import time
 
 # Load the original CSV
-data = pd.read_csv('test.csv')
+data = pd.read_csv('test.csv', encoding='windows-1252')
+
 
 # Add a new column for website year if it doesn't exist
 if 'Website Year' not in data.columns:
@@ -35,12 +36,9 @@ def scrape_with_requests(url):
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             text = soup.get_text()
-            match = re.search(
-                r'(©\s*(?:\w+\s*)?\b(19|20)\d{2}\b|\b(19|20)\d{2}\b\s*(?:\w+\s*)?©)', text)
+            match = re.search(r'©\s*(20[0-2]\d)', text)
             if match:
-                year_match = re.search(r'\b(19|20)\d{2}\b', match.group())
-                if year_match:
-                    return year_match.group()
+                return match.group(1)  # Returns only the year part
             else:
                 return "No year found"  # No match found
     except Exception as e:
@@ -51,24 +49,18 @@ def scrape_with_requests(url):
 def scrape_with_selenium(url):
     try:
         driver.get(url)
-        # Wait for the page to load and JavaScript to execute
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
-        # Scroll to the bottom of the page to trigger any lazy-loaded elements
         driver.execute_script(
             "window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(5)  # Wait for any lazy-loaded elements to load
-        # Retrieve the updated page source after JavaScript execution
         body_text = driver.find_element(By.TAG_NAME, "body").text
-        match = re.search(
-            r'(©\s*(?:\w+\s*)?\b(19|20)\d{2}\b|\b(19|20)\d{2}\b\s*(?:\w+\s*)?©)', body_text)
+        match = re.search(r'©\s*(20[0-2]\d)', body_text)
         if match:
-            year_match = re.search(r'\b(19|20)\d{2}\b', match.group())
-            if year_match:
-                return year_match.group()
-            else:
-                return "No year found"
+            return match.group(1)  # Returns only the year part
+        else:
+            return "No year found"
     except Exception as e:
         print(f"Error with Selenium for URL {url}: {str(e)}")
     return "error"
